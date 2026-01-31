@@ -200,6 +200,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       handleNext()
     }
   }
+  // asdasd
 
   const handleStartGame = () => {
     if (onComplete && data.location && generatedChapters.length > 0) {
