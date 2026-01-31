@@ -121,7 +121,7 @@ const QUIZ_OUTPUT_SCHEMA = {
 
 function buildSystemPrompt(knowledgeLevel: string, userType: string): string {
   // Adapt complexity based on knowledge level
-  const complexityGuidance = {
+  const complexityOptions: Record<string, string> = {
     beginner: `
 - Use simple, everyday language - avoid jargon and technical terms
 - Explain any necessary political terms in the question or feedback
@@ -135,10 +135,11 @@ function buildSystemPrompt(knowledgeLevel: string, userType: string): string {
 - Feel free to use political and legal terminology
 - Include nuanced details about implementation and implications
 - Reference specific legislation, precedents, or policy mechanisms`
-  }[knowledgeLevel] || complexityGuidance.intermediate
+  }
+  const complexityGuidance = complexityOptions[knowledgeLevel] || complexityOptions.intermediate
 
   // Adapt tone based on user type
-  const toneGuidance = {
+  const toneOptions: Record<string, string> = {
     "first-time": `
 - Be encouraging and welcoming
 - Emphasize that there are no "wrong" answers - this is about learning
@@ -151,7 +152,8 @@ function buildSystemPrompt(knowledgeLevel: string, userType: string): string {
 - Be engaging and interesting
 - Highlight surprising or counterintuitive facts
 - Make connections to broader civic themes`
-  }[userType] || toneGuidance.regular
+  }
+  const toneGuidance = toneOptions[userType] || toneOptions.regular
 
   return `You are an expert civic educator creating an educational quiz game for voters. Your role is to help citizens understand upcoming ballot measures and current political issues in their area.
 

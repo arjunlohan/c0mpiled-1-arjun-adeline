@@ -161,11 +161,11 @@ export async function queryUserPerformance(
 
     const response = await client.memories.search({
       query,
-      sources: ['vault'],
+      sources: ['collections'],
       answer: true,
       options: {
-        vault: {
-          collection: 'quiz_results',
+        collections: {
+          filter: { collection: 'quiz_results' },
         },
         max_results: 10,
       },
@@ -176,7 +176,7 @@ export async function queryUserPerformance(
     }
 
     // Parse the documents to extract performance metrics
-    return parsePerformanceFromDocuments(response.documents, response.answer)
+    return parsePerformanceFromDocuments(response.documents, response.answer ?? undefined)
   } catch (error) {
     console.error('Failed to query user performance from Hyperspell:', error)
     return null
@@ -197,7 +197,7 @@ export async function getPersonalizationContext(
     // Query for relevant user context
     const response = await client.memories.search({
       query: `What do we know about this user's voting knowledge, past quiz performance on ${topics.join(', ')}, and areas they need to improve?`,
-      sources: ['vault'],
+      sources: ['collections'],
       answer: true,
       options: {
         max_results: 5,
