@@ -38,11 +38,30 @@ export interface GenerateQuizRequest {
   knowledgeLevel: string     // "beginner" | "intermediate" | "expert"
   userType: string           // "first-time" | "regular" | "curious"
   questionsPerChapter?: number
+  userId?: string            // Optional user ID for Hyperspell personalization
 }
 
 export interface GenerateQuizResponse {
   success: boolean
   chapters?: Chapter[]
+  error?: string
+}
+
+// Save Results API types
+export interface SaveResultsRequest {
+  userId: string
+  location: string
+  topics: string[]
+  knowledgeLevel: string
+  userType: string
+  chapters: { id: string; title: string; score: number; total: number }[]
+  overallScore: number
+  overallTotal: number
+}
+
+export interface SaveResultsResponse {
+  success: boolean
+  memoryId?: string
   error?: string
 }
 
@@ -58,6 +77,7 @@ export interface GenerateQuizResponse {
  * @param knowledgeLevel - User's familiarity with politics
  * @param userType - Type of voter (first-time, regular, curious)
  * @param questionsPerChapter - Number of questions per chapter (default: 4)
+ * @param userId - Optional user ID for Hyperspell personalization
  * @returns Promise with generated chapters or error
  */
 export async function generateQuizWithLLM(
@@ -65,7 +85,8 @@ export async function generateQuizWithLLM(
   location: string,
   knowledgeLevel: string,
   userType: string,
-  questionsPerChapter: number = 4
+  questionsPerChapter: number = 4,
+  userId?: string
 ): Promise<GenerateQuizResponse> {
   try {
     const response = await fetch("/api/generate-quiz", {
@@ -79,6 +100,7 @@ export async function generateQuizWithLLM(
         knowledgeLevel,
         userType,
         questionsPerChapter,
+        userId,
       } as GenerateQuizRequest),
     })
 
@@ -95,6 +117,43 @@ export async function generateQuizWithLLM(
 
   } catch (error) {
     console.error("Error calling quiz generation API:", error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Network error occurred",
+    }
+  }
+}
+
+/**
+ * Saves quiz results to Hyperspell memory for future personalization
+ * 
+ * @param request - The quiz results to save
+ * @returns Promise with save status
+ */
+export async function saveQuizResults(
+  request: SaveResultsRequest
+): Promise<SaveResultsResponse> {
+  try {
+    const response = await fetch("/api/save-results", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      return {
+        success: false,
+        error: errorData.error || `HTTP error: ${response.status}`,
+      }
+    }
+
+    return await response.json() as SaveResultsResponse
+
+  } catch (error) {
+    console.error("Error saving quiz results:", error)
     return {
       success: false,
       error: error instanceof Error ? error.message : "Network error occurred",

@@ -1,5 +1,6 @@
 import OpenAI from "openai"
 import { NextRequest, NextResponse } from "next/server"
+import { getPersonalizationContext, storeUserPreferences } from "@/lib/hyperspell"
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -33,6 +34,7 @@ interface GenerateQuizRequest {
   knowledgeLevel: string     // "beginner" | "intermediate" | "expert"
   userType: string           // "first-time" | "regular" | "curious"
   questionsPerChapter?: number // Default: 4
+  userId?: string            // Optional user ID for personalization via Hyperspell
 }
 
 interface GenerateQuizResponse {
@@ -311,7 +313,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<GenerateQ
       location, 
       knowledgeLevel = "intermediate", 
       userType = "regular",
-      questionsPerChapter = 4 
+      questionsPerChapter = 4,
+      userId
     } = body
 
     // Validate input
@@ -331,9 +334,40 @@ export async function POST(request: NextRequest): Promise<NextResponse<GenerateQ
 
     console.log(`Generating quiz for zip ${location} (${knowledgeLevel}/${userType}) with topics: ${topics.join(", ")}`)
 
-    // Build prompts with user profile data
+    // ========================================================================
+    // HYPERSPELL INTEGRATION - Memory-powered personalization
+    // ========================================================================
+    
+    let personalizationContext = ""
+    
+    // If we have a user ID and Hyperspell is configured, get personalization context
+    if (userId && process.env.HYPERSPELL_API_KEY) {
+      console.log(`Fetching personalization context for user: ${userId}`)
+      
+      try {
+        // Store user preferences for future reference
+        await storeUserPreferences(userId, {
+          location,
+          favoriteTopics: topics,
+          knowledgeLevel,
+          userType,
+        })
+        
+        // Get context from past quiz performance
+        personalizationContext = await getPersonalizationContext(userId, topics)
+        
+        if (personalizationContext) {
+          console.log("Hyperspell personalization context retrieved successfully")
+        }
+      } catch (hyperspellError) {
+        // Log but don't fail - Hyperspell is optional enhancement
+        console.warn("Hyperspell personalization failed, continuing without:", hyperspellError)
+      }
+    }
+
+    // Build prompts with user profile data and personalization context
     const systemPrompt = buildSystemPrompt(knowledgeLevel, userType)
-    const userPrompt = buildUserPrompt(topics, location, knowledgeLevel, userType, questionsPerChapter)
+    const userPrompt = buildUserPrompt(topics, location, knowledgeLevel, userType, questionsPerChapter) + personalizationContext
 
     // Call OpenAI Responses API with gpt-5.2 and web search
     // Using the Responses API as recommended in the docs
